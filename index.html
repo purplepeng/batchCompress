@@ -5,7 +5,37 @@
   </head>
   <body>
     <h3>hello batch compress</h3>
+    <h5>use <a target="_blank" href="https://github.com/fengyuanchen/compressorjs">compressorjs</a></h5>
     <div>
+      <h4>Options 设置</h4>
+      <div class="option-wrapper">
+        <div class="form-item">
+          <label class="form-title">width:</label>
+          <input type="text" id="width" />
+        </div>
+        <div class="form-item">
+          <label class="form-title">height:</label>
+          <input type="text" id="height" />
+        </div>
+        <div class="form-item">
+          <label class="form-title">quality:</label>
+          <select id="quality">
+            <!-- <option value="0">0</option> -->
+            <option value="0.1">0.1</option>
+            <option value="0.2">0.2</option>
+            <option value="0.3">0.3</option>
+            <option value="0.4">0.4</option>
+            <option value="0.5">0.5</option>
+            <option value="0.6">0.6</option>
+            <option value="0.7">0.7</option>
+            <option value="0.8">0.8</option>
+            <option value="0.9">0.9</option>
+            <option value="1.0">1.0</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div>            
       <input type="file" id="file" multiple accept="image/*">
       <h4>预览</h4>
       <div id="preview" class="photo-list">
@@ -38,6 +68,22 @@
       margin-top: 8px;
       margin-bottom: 10px;
     }
+    .option-wrapper {
+      width: 400px;
+      border: 1px solid #EAEAEA;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+    .form-item {
+      margin: 10px;
+    }
+    .form-title {
+      width: 70px;
+      display: inline-block;
+      color: #333;
+      text-align: right;
+      margin-right: 10px;
+    }
   </style>
   <script src="./common/compressor.min.js"></script>
   <script type="text/javascript" src="./common/utils.js"></script>
@@ -50,9 +96,17 @@
         return;
       }
       
+      const width = document.getElementById('width').value
+      const height = document.getElementById('height').value
+      const quality = document.getElementById('quality').value
+      debugger
       const promises = []
       for (let i = 0; i < files.length; i++) {
-        const promise = compressPromiss(files[i]);
+        const promise = compressPromiss(files[i], {
+          width,
+          height,
+          quality
+        });
         promises.push(promise)
       }      
       Promise.allSettled(promises).then(values => {
@@ -87,10 +141,13 @@
       })
     })
 
-    var compressPromiss = function (file) {
+    var compressPromiss = function (file, options) {
+      const { width, height, quality } = options || {};
       return new Promise((resolve, reject) => {
         new Compressor(file, {
-          quality: 0.1,
+          width,
+          height, 
+          quality,
           success(result) {
             console.log('result is ', result);
             resolve(result)
