@@ -4,10 +4,10 @@
     <title>batch compress</title>
   </head>
   <body>
-    <h3>hello batch compress</h3>
+    <h3>Hello, batch compress!</h3>
     <h5>use <a target="_blank" href="https://github.com/fengyuanchen/compressorjs">compressorjs</a></h5>
     <div>
-      <h4>Options 设置</h4>
+      <h4>0. Options 设置</h4>
       <div class="option-wrapper">
         <div class="form-item">
           <label class="form-title">width:</label>
@@ -37,9 +37,10 @@
     </div>
     <div>            
       <input type="file" id="file" multiple accept="image/*">
-      <h4>预览</h4>
+      <h4>1. 压缩预览</h4>
       <div id="preview" class="photo-list">
       </div>
+      <h4>2. 下载</h4>
       <button type="button" onclick="batchDownload()">批量下载</button>
     </div>
   </body>
@@ -47,6 +48,7 @@
     .photo-list {
       display: flex;
       flex-direction: row;
+      flex-wrap: wrap;
     }
     .photo-wrapper {
       margin-left: 10px;
@@ -86,6 +88,8 @@
     }
   </style>
   <script src="./common/compressor.min.js"></script>
+  <script src="./common/jszip.min.js"></script>
+  <script src="./common/FileSaver.min.js"></script>
   <script type="text/javascript" src="./common/utils.js"></script>
   <script>
     var fileList = [];
@@ -99,7 +103,7 @@
       const width = document.getElementById('width').value
       const height = document.getElementById('height').value
       const quality = document.getElementById('quality').value
-      debugger
+      
       const promises = []
       for (let i = 0; i < files.length; i++) {
         const promise = compressPromiss(files[i], {
@@ -135,7 +139,7 @@
           imgWrapper.appendChild(titleEle)
           imgWrapper.appendChild(subtitleEle)          
           document.getElementById('preview').appendChild(imgWrapper);
-          downloadFile(value, value.name);
+          // downloadFile(value, value.name);
           fileList.push(value)
         });
       })
@@ -163,12 +167,23 @@
     var batchDownload = function() {
       console.log('batch download');
       if (fileList && fileList.length) {
-        fileList.forEach(file => {
-          downloadFile(file, file.name);
-        });
+        // fileList.forEach(file => {
+        //   downloadFile(file, file.name);
+        // });
+        downloadMultiZip(fileList);
       } else {
         alert('请先选择图片')
       }
+    }
+
+    var downloadMultiZip = function(blobs) {
+      var zip = new JSZip();
+      blobs.forEach(blob => {
+        zip.file(blob.name, blob, { binary: true })
+      });
+      zip.generateAsync({ type: 'blob' }).then(content => {
+        saveAs(content, `批量图片.zip`)
+      })
     }
   </script>
 </html>
