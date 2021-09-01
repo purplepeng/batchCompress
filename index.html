@@ -4,6 +4,114 @@
     <title>batch compress</title>
   </head>
   <body>
-    hello batch
+    <h3>hello batch compress</h3>
+    <div>
+      <input type="file" id="file" multiple accept="image/*">
+      <h4>预览</h4>
+      <div id="preview" class="photo-list">
+      </div>
+      <button type="button" onclick="batchDownload()">批量下载</button>
+    </div>
   </body>
+  <style>
+    .photo-list {
+      display: flex;
+      flex-direction: row;
+    }
+    .photo-wrapper {
+      margin-left: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #EAEAEA;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+    }
+    .photo-item {
+      width: 200px;
+      height: 200px;
+    }
+    .title {
+      margin-top: 10px;
+    }
+    .subtitle {
+      margin-top: 8px;
+      margin-bottom: 10px;
+    }
+  </style>
+  <script src="./common/compressor.min.js"></script>
+  <script type="text/javascript" src="./common/utils.js"></script>
+  <script>
+    var fileList = [];
+    document.getElementById('file').addEventListener('change', (e) => {
+      const files = e.target.files;
+
+      if (!files || !files.length) {
+        return;
+      }
+      
+      const promises = []
+      for (let i = 0; i < files.length; i++) {
+        const promise = compressPromiss(files[i]);
+        promises.push(promise)
+      }      
+      Promise.allSettled(promises).then(values => {
+        console.log('values is ', values);
+        fileList = []
+        values.forEach(result => {
+          const { status, value } = result;
+          const imgWrapper = document.createElement('div')
+          imgWrapper.className = 'photo-wrapper';
+          
+          const src = URL.createObjectURL(value)
+          const img = document.createElement('img')
+          img.src = src
+          img.className = 'photo-item'
+
+          const titleEle = document.createElement('span')
+          titleEle.innerText = value.name
+          titleEle.className = 'title'
+
+          const subtitleEle = document.createElement('span')
+          const size = renderSize(value.size)
+          subtitleEle.innerText = `${size}`
+          subtitleEle.className = 'subtitle'
+
+          imgWrapper.appendChild(img)
+          imgWrapper.appendChild(titleEle)
+          imgWrapper.appendChild(subtitleEle)          
+          document.getElementById('preview').appendChild(imgWrapper);
+          downloadFile(value, value.name);
+          fileList.push(value)
+        });
+      })
+    })
+
+    var compressPromiss = function (file) {
+      return new Promise((resolve, reject) => {
+        new Compressor(file, {
+          quality: 0.4,
+          success(result) {
+            console.log('result is ', result);
+            resolve(result)
+          },
+          error(err) {
+            console.log(err.message);
+            reject(err)
+          }
+        })
+      })
+    }
+
+    var batchDownload = function() {
+      console.log('batch download');
+      if (fileList && fileList.length) {
+        fileList.forEach(file => {
+          downloadFile(file, file.name);
+        });
+      } else {
+        alert('请先选择图片')
+      }
+    }
+  </script>
 </html>
