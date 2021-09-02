@@ -1,7 +1,57 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>batch compress</title>
+    <script src="./common/compressor.min.js"></script>
+    <script src="./common/jszip.min.js"></script>
+    <script src="./common/FileSaver.min.js"></script>
+    <script src="./common/utils.js"></script>
+    <style>
+      .photo-list {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+      .photo-wrapper {
+        margin-left: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #EAEAEA;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
+      }
+      .photo-item {
+        width: 200px;
+        height: 200px;
+        object-fit: contain;
+      }
+      .title {
+        margin-top: 10px;
+      }
+      .subtitle {
+        margin-top: 8px;
+        margin-bottom: 10px;
+      }
+      .option-wrapper {
+        width: 400px;
+        border: 1px solid #EAEAEA;
+        padding: 10px;
+        margin-bottom: 20px;
+      }
+      .form-item {
+        margin: 10px;
+      }
+      .form-title {
+        width: 70px;
+        display: inline-block;
+        color: #333;
+        text-align: right;
+        margin-right: 10px;
+      }
+    </style>
   </head>
   <body>
     <h3>Hello, batch compress!</h3>
@@ -20,7 +70,6 @@
         <div class="form-item">
           <label class="form-title">quality:</label>
           <select id="quality">
-            <!-- <option value="0">0</option> -->
             <option value="0.1">0.1</option>
             <option value="0.2">0.2</option>
             <option value="0.3">0.3</option>
@@ -38,86 +87,80 @@
     <div>            
       <input type="file" id="file" multiple accept="image/*">
       <h4>1. 压缩预览</h4>
-      <div id="preview" class="photo-list">
+      <h6>原图片列表</h6>
+      <div id="sourcePreview" class="photo-list">
+      </div>
+      <h6>压缩后图片列表</h6>
+      <div id="compressPreview" class="photo-list">
       </div>
       <h4>2. 下载</h4>
       <button type="button" onclick="batchDownload()">批量下载</button>
     </div>
-  </body>
-  <style>
-    .photo-list {
-      display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-    }
-    .photo-wrapper {
-      margin-left: 10px;
-      margin-bottom: 10px;
-      border: 1px solid #EAEAEA;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: center;
-    }
-    .photo-item {
-      width: 200px;
-      height: 200px;
-    }
-    .title {
-      margin-top: 10px;
-    }
-    .subtitle {
-      margin-top: 8px;
-      margin-bottom: 10px;
-    }
-    .option-wrapper {
-      width: 400px;
-      border: 1px solid #EAEAEA;
-      padding: 10px;
-      margin-bottom: 20px;
-    }
-    .form-item {
-      margin: 10px;
-    }
-    .form-title {
-      width: 70px;
-      display: inline-block;
-      color: #333;
-      text-align: right;
-      margin-right: 10px;
-    }
-  </style>
-  <script src="./common/compressor.min.js"></script>
-  <script src="./common/jszip.min.js"></script>
-  <script src="./common/FileSaver.min.js"></script>
-  <script type="text/javascript" src="./common/utils.js"></script>
-  <script>
-    var fileList = [];
-    document.getElementById('file').addEventListener('change', (e) => {
-      const files = e.target.files;
 
-      if (!files || !files.length) {
-        return;
+    <script>
+      var sourceList = []; // 原图片列表
+      var fileList = []; // 压缩后图片列表
+      document.getElementById('file').addEventListener('change', (e) => {
+        const files = e.target.files;
+        sourceList = files;
+
+        if (!files || !files.length) {
+          return;
+        }
+        
+        const width = document.getElementById('width').value
+        const height = document.getElementById('height').value
+        const quality = document.getElementById('quality').value
+        
+        const promises = []
+        for (let i = 0; i < files.length; i++) {
+          const promise = compressPromiss(files[i], {
+            width,
+            height,
+            quality
+          });
+          promises.push(promise)
+        }      
+        Promise.allSettled(promises).then(values => {
+          console.log('values is ', values);
+          fileList = []
+          values.forEach(result => {
+            const { status, value } = result;
+            fileList.push(value)
+          });
+
+          previewFileList(sourceList, true);
+          previewFileList(fileList, false);
+        })
+      })
+
+      var compressPromiss = function (file, options) {
+        const { width, height, quality } = options || {};
+        return new Promise((resolve, reject) => {
+          new Compressor(file, {
+            width,
+            height, 
+            quality,
+            success(result) {
+              console.log('result is ', result);
+              resolve(result)
+            },
+            error(err) {
+              console.log(err.message);
+              reject(err)
+            }
+          })
+        })
       }
-      
-      const width = document.getElementById('width').value
-      const height = document.getElementById('height').value
-      const quality = document.getElementById('quality').value
-      
-      const promises = []
-      for (let i = 0; i < files.length; i++) {
-        const promise = compressPromiss(files[i], {
-          width,
-          height,
-          quality
-        });
-        promises.push(promise)
-      }      
-      Promise.allSettled(promises).then(values => {
-        console.log('values is ', values);
-        fileList = []
-        values.forEach(result => {
-          const { status, value } = result;
+
+      var previewFileList = function(values, isSouce) {
+        if (!values || !values.length) {
+          return;
+        }
+
+        for (let index = 0; index < values.length; index++) {
+          const value = values[index];
+
           const imgWrapper = document.createElement('div')
           imgWrapper.className = 'photo-wrapper';
           
@@ -137,53 +180,30 @@
 
           imgWrapper.appendChild(img)
           imgWrapper.appendChild(titleEle)
-          imgWrapper.appendChild(subtitleEle)          
-          document.getElementById('preview').appendChild(imgWrapper);
-          // downloadFile(value, value.name);
-          fileList.push(value)
-        });
-      })
-    })
-
-    var compressPromiss = function (file, options) {
-      const { width, height, quality } = options || {};
-      return new Promise((resolve, reject) => {
-        new Compressor(file, {
-          width,
-          height, 
-          quality,
-          success(result) {
-            console.log('result is ', result);
-            resolve(result)
-          },
-          error(err) {
-            console.log(err.message);
-            reject(err)
-          }
-        })
-      })
-    }
-
-    var batchDownload = function() {
-      console.log('batch download');
-      if (fileList && fileList.length) {
-        // fileList.forEach(file => {
-        //   downloadFile(file, file.name);
-        // });
-        downloadMultiZip(fileList);
-      } else {
-        alert('请先选择图片')
+          imgWrapper.appendChild(subtitleEle)     
+          const targetEle = isSouce ? 'sourcePreview' : 'compressPreview'     
+          document.getElementById(targetEle).appendChild(imgWrapper);
+        }
       }
-    }
 
-    var downloadMultiZip = function(blobs) {
-      var zip = new JSZip();
-      blobs.forEach(blob => {
-        zip.file(blob.name, blob, { binary: true })
-      });
-      zip.generateAsync({ type: 'blob' }).then(content => {
-        saveAs(content, `批量图片.zip`)
-      })
-    }
-  </script>
+      var batchDownload = function() {
+        console.log('batch download');
+        if (fileList && fileList.length) {
+          downloadMultiZip(fileList);
+        } else {
+          alert('请先选择图片')
+        }
+      }
+
+      var downloadMultiZip = function(blobs) {
+        var zip = new JSZip();
+        blobs.forEach(blob => {
+          zip.file(blob.name, blob, { binary: true })
+        });
+        zip.generateAsync({ type: 'blob' }).then(content => {
+          saveAs(content, `批量图片.zip`)
+        })
+      }
+    </script>
+  </body>
 </html>
